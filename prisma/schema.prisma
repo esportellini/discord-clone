@@ -1,94 +1,112 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Supabase: use a URL do pooler em DATABASE_URL e a conexão direta aqui
+  directUrl = env("DIRECT_URL")
 }
 
-model Profile{
-  id String @id @default(uuid())
-  userId String @unique
-  name String
+model Profile {
+  id       String @id @default(uuid())
+  userId   String @unique
+  name     String
   imageUrl String @db.Text
-  email String @db.Text
+  email    String @db.Text
 
-  server Server[]
-  members Member[]
+  servers  Server[]
+  members  Member[]
   channels Channel[]
 
-  createAt DateTime @default(now())
-  updateAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-model Server{
-  id String @id @default(uuid())
-  name String
-  imageUrl String @db.Text
-  inviteCode String @db.Text
+model Server {
+  id         String @id @default(uuid())
+  name       String
+  imageUrl   String @db.Text
+  inviteCode String @unique
 
   profileId String
-  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
-  members Member[]
+  members  Member[]
   channels Channel[]
 
-  createAt DateTime @default(now())
-  updateAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([profileId])
 }
 
-enum MemberRole{
-  ADMIN 
+enum MemberRole {
+  ADMIN
   MODERATOR
   GUEST
 }
 
-model Member{
-  id String @id @default(uuid())
+model Member {
+  id   String     @id @default(uuid())
   role MemberRole @default(GUEST)
 
-  profileid String
-  profile Profile @relation(fields: [profileid], references: [id], onDelete: Cascade)
-  
+  profileId String
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
   serverId String
-  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  server   Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
 
-  createAt DateTime @default(now())
-  updateAt DateTime @updatedAt
+  messages Message[]
 
-  @@index([profileid])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([profileId, serverId])
   @@index([serverId])
 }
 
-enum ChannelType{
+enum ChannelType {
   TEXT
   AUDIO
   VIDEO
 }
 
-model Channel{
-  id String @id @default(uuid())
+model Channel {
+  id   String      @id @default(uuid())
   name String
   type ChannelType @default(TEXT)
 
   profileId String
-  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   serverId String
-  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  server   Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
 
-  createAt DateTime @default(now())
-  updateAt DateTime @updatedAt
+  messages Message[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([serverId])
   @@index([profileId])
+}
+
+model Message {
+  id      String  @id @default(uuid())
+  content String  @db.Text
+  deleted Boolean @default(false)
+
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  channelId String
+  channel   Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([channelId, createdAt])
+  @@index([memberId])
 }
